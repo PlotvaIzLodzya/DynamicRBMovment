@@ -1,14 +1,16 @@
 using System;
 using System.Collections;
+using System.Linq;
 using UnityEngine;
 
-public class CharacterControll : MonoBehaviour
+public class CharacterControl : MonoBehaviour
 {
     [SerializeField] private float _maxSpeed;
     [SerializeField] private float _accelerationTime;
     [SerializeField] private float _stopTime;
     [SerializeField] private ContactFilter2D _contactFilter;
     
+    private bool _isOnSteepSlope;
     private ContactPoint2D[] _points;
     private Vector2 _direction;
     private Rigidbody2D _rb;
@@ -35,6 +37,7 @@ public class CharacterControll : MonoBehaviour
         var normal = GetNormal();
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
+        
         var force = direction * forceMagnitude + slopeCounterForce;
         Debug.DrawRay(_rb.position, force, Color.red);
         _rb.AddForce(force);
@@ -49,19 +52,30 @@ public class CharacterControll : MonoBehaviour
 
     private Vector2 GetNormal()
     {
-        _rb.GetContacts(_contactFilter, _points);
-        var points = new RaycastHit2D[5];
-        var direction = _direction.sqrMagnitude > 0.01f ? _direction : Vector2.down;
-        direction = _rb.linearVelocity.normalized;
-        _rb.Cast(direction, _contactFilter, points, 0.2f);
+        var contactsCount = _rb.GetContacts(_contactFilter, _points);
         
         var normal = Vector2.zero;
-        foreach (var contact in points)
+
+        if (_direction.sqrMagnitude > 0)
         {
-            normal += contact.normal;
+            foreach (var contact in _points)
+            {
+                var dirToPoint = contact.point - _rb.position;
+
+                if (IsSameDirection(_direction, dirToPoint))
+                {
+                    normal = contact.normal;
+                    Debug.DrawRay(_rb.position, contact.normal, Color.blue);
+                    break;
+                }
+            }
         }
 
-        normal = normal == Vector2.zero ? Vector2.up : normal;
+        if(normal == Vector2.zero)
+            normal = _points[0].normal;
+        
+        Debug.DrawRay(_rb.position, normal.normalized, Color.yellow);
+        
         Array.Clear(_points, 0, _points.Length);
         
         return normal.normalized;
@@ -69,10 +83,15 @@ public class CharacterControll : MonoBehaviour
 
     private Vector2 GetSlopeForce(Vector2 normal)
     {
-        var tangent = new Vector2(-normal.y, normal.x); 
+        var tangent = Vector2.Perpendicular(normal); 
         var gravityAlongSlope = -Physics2D.gravity.y * _rb.gravityScale * normal.x;
         var force = tangent * (_rb.mass * gravityAlongSlope);
         
         return force;
+    }
+    
+    public bool IsSameDirection(Vector3 vectorA, Vector3 vectorB)
+    {
+        return Vector3.Angle(vectorA, vectorB) < 90;
     }
 }
