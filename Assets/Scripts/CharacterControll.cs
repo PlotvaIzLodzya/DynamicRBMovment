@@ -10,12 +10,13 @@ public class CharacterControl : MonoBehaviour
     
     [SerializeField] private ContactFilter2D _contactFilter;
 
+    private bool _isOnSlope;
     private bool _inTest;
     private ContactPoint2D[] _points;
     private Vector2 _direction;
     private Rigidbody2D _rb;
-    
-    public float Speed => _rb.linearVelocity.magnitude;
+
+    public float Speed { get; private set; }
     public bool IsGrounded { get; private set; }
 
     private void Awake()
@@ -43,10 +44,12 @@ public class CharacterControl : MonoBehaviour
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
         
-        var force = direction * forceMagnitude + slopeCounterForce;
+        var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
+        
         Debug.DrawRay(_rb.position, force, Color.red);
         
         _rb.AddForce(force);
+        Speed = _rb.linearVelocity.magnitude;
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
     }
 
@@ -61,14 +64,15 @@ public class CharacterControl : MonoBehaviour
         IsGrounded = contactsCount > 0;
         var normal = Vector2.zero;
 
-        if (_direction.sqrMagnitude > 0)
+        if (_rb.linearVelocity.sqrMagnitude > 0)
         {
             foreach (var contact in _points)
             {
                 var dirToPoint = contact.point - _rb.position;
-
+                Debug.Log(dirToPoint);
                 if (IsSameDirection(_direction, dirToPoint))
                 {
+                    Debug.Log("Same Direction");
                     normal = contact.normal;
                     Debug.DrawRay(_rb.position, contact.normal, Color.blue);
                     break;
@@ -86,13 +90,29 @@ public class CharacterControl : MonoBehaviour
         return normal.normalized;
     }
 
-    private float CalculateForce(float accelerationTime, float maxSpeed, float mass, float linearDamping)
+    private float CalculateForce(float accelerationTime, float targetSpeed, float mass, float linearDamping, float currentSpeed = 0f)
     {
-        var exponent = Mathf.Exp(-linearDamping/mass * accelerationTime);
+        var exponent = Mathf.Exp(- linearDamping/mass * accelerationTime);
         var denominator = 1f - exponent;
-        var forceMagnitude = maxSpeed * (mass * linearDamping) / denominator;
+        var forceMagnitude = (targetSpeed - currentSpeed * exponent) * (mass * linearDamping) / denominator;
         
         return forceMagnitude;
+    }
+
+    private Vector2 HandleSlope(Vector2 force, Vector2 slopeCounterForce, Vector2 surfaceNormal)
+    {
+        var wasOnSlope = _isOnSlope;
+        _isOnSlope = Mathf.Abs(surfaceNormal.x) > 0;
+        var enteredSlope = _isOnSlope && wasOnSlope == false;
+        var exitSlope = _isOnSlope == false && wasOnSlope;
+        
+        if (enteredSlope || exitSlope)
+        {
+            Debug.Log("OnExit");
+            return force.normalized * CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearDamping, _rb.linearVelocity.magnitude) + slopeCounterForce;
+        }
+        
+        return force + slopeCounterForce;
     }
 
     private Vector2 GetSlopeForce(Vector2 normal)

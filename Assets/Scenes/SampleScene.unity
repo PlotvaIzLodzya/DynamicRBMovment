@@ -1678,7 +1678,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   <MaxSpeed>k__BackingField: 10
-  <AccelerationTime>k__BackingField: 0.4
+  <AccelerationTime>k__BackingField: 0.6
   _contactFilter:
     useTriggers: 1
     useLayerMask: 1
@@ -2077,7 +2077,7 @@ GameObject:
   - component: {fileID: 1032852226}
   - component: {fileID: 1032852225}
   m_Layer: 6
-  m_Name: TestObstacles (1)
+  m_Name: StraightTestObstacles (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2278,7 +2278,7 @@ GameObject:
   - component: {fileID: 1146263971}
   - component: {fileID: 1146263970}
   m_Layer: 6
-  m_Name: TestObstacles (4)
+  m_Name: ExitingSlopeTestObstacles (4)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2973,12 +2973,12 @@ GameObject:
   - component: {fileID: 1949259978}
   - component: {fileID: 1949259977}
   m_Layer: 6
-  m_Name: TestObstacles
+  m_Name: EnterSlopeTestObstacles
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1949259977
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3075,7 +3075,7 @@ GameObject:
   - component: {fileID: 2009557743}
   - component: {fileID: 2009557742}
   m_Layer: 6
-  m_Name: TestObstacles (3)
+  m_Name: SlideUpTestObstacles (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3122,7 +3122,7 @@ GameObject:
   - component: {fileID: 2012990352}
   - component: {fileID: 2012990351}
   m_Layer: 6
-  m_Name: TestObstacles (2)
+  m_Name: SlideDownTestObstacles (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
