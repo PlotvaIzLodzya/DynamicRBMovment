@@ -7,14 +7,14 @@ namespace Tests
 {
     public abstract class CharacterAccelerationTest
     {
-        private readonly float _testTimeScale = 10f;
+
         protected abstract  AccelerationTestType TestType { get; }
         
         [UnityTest]
         public IEnumerator AccelerationTestWithEnumeratorPasses()
         {
             yield return SceneManager.LoadSceneAsync("SampleScene");
-            Time.timeScale = _testTimeScale;
+            Time.timeScale = AccelerationTestSceneConfiguration.TestTimeScale;
             var character = GameObject.FindAnyObjectByType<CharacterControl>();
             var obstacleConfiguration = GameObject.FindAnyObjectByType<AccelerationTestSceneConfiguration>();
             
