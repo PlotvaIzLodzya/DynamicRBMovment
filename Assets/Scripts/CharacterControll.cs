@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -43,10 +44,9 @@ public class CharacterControl : MonoBehaviour
         var normal = GetNormal();
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
-        
         var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
         
-        Debug.DrawRay(_rb.position, force, Color.red);
+        // Debug.DrawRay(_rb.position, force, Color.red);
         
         _rb.AddForce(force);
         Speed = _rb.linearVelocity.magnitude;
@@ -62,18 +62,34 @@ public class CharacterControl : MonoBehaviour
     {
         var contactsCount = _rb.GetContacts(_contactFilter, _points);
         IsGrounded = contactsCount > 0;
+        // var normal = _points.Any(p=> p.normal == Vector2.up) ? Vector2.up : Vector2.zero;
         var normal = Vector2.zero;
 
-        if (_rb.linearVelocity.sqrMagnitude > 0)
+        foreach (var contact in _points)
+        {
+            Debug.DrawRay(contact.point, contact.normal, Color.red);
+        }
+        
+        if (contactsCount == 1)
+        {
+            var tempNormal = _points[0].normal;
+            Array.Clear(_points, 0, _points.Length);
+            return tempNormal;
+        }
+        
+        if (_rb.linearVelocity.sqrMagnitude > 0.001f)
         {
             foreach (var contact in _points)
             {
                 var dirToPoint = contact.point - _rb.position;
-                Debug.Log(dirToPoint);
-                if (IsSameDirection(_direction, dirToPoint))
+                var dir = _rb.linearVelocity.normalized;
+                dir.y = 0;
+                if (IsSameDirection(dir, dirToPoint))
                 {
-                    Debug.Log("Same Direction");
                     normal = contact.normal;
+                    if(normal == Vector2.zero)
+                        normal = Vector2.up;
+                    Debug.Log($"Same: {normal}");
                     Debug.DrawRay(_rb.position, contact.normal, Color.blue);
                     break;
                 }
@@ -83,7 +99,7 @@ public class CharacterControl : MonoBehaviour
         if(normal == Vector2.zero)
             normal = _points[0].normal;
         
-        Debug.DrawRay(_rb.position, normal.normalized, Color.yellow);
+        // Debug.DrawRay(_rb.position, normal.normalized, Color.yellow);
         
         Array.Clear(_points, 0, _points.Length);
         
@@ -102,7 +118,7 @@ public class CharacterControl : MonoBehaviour
     private Vector2 HandleSlope(Vector2 force, Vector2 slopeCounterForce, Vector2 surfaceNormal)
     {
         var wasOnSlope = _isOnSlope;
-        _isOnSlope = Mathf.Abs(surfaceNormal.x) > 0;
+        _isOnSlope = Mathf.Abs(surfaceNormal.x) > 0 && IsGrounded;
         var enteredSlope = _isOnSlope && wasOnSlope == false;
         var exitSlope = _isOnSlope == false && wasOnSlope;
         
