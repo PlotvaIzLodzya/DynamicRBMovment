@@ -9,6 +9,7 @@ namespace Tests
         ExitingSlope,
         SlideDown,
         SlideUp,
+        StartAtIntersectionOfSlopeAndGround,
     }
     
     public class TestObstacle : MonoBehaviour
