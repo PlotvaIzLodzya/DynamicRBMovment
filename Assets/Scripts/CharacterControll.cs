@@ -1,7 +1,4 @@
 using System;
-using System.Collections;
-using System.Linq;
-using NUnit.Framework;
 using UnityEngine;
 
 public class CharacterControl : MonoBehaviour
@@ -46,8 +43,6 @@ public class CharacterControl : MonoBehaviour
         var slopeCounterForce = GetSlopeForce(normal);
         var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
         
-        // Debug.DrawRay(_rb.position, force, Color.red);
-        
         _rb.AddForce(force);
         Speed = _rb.linearVelocity.magnitude;
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
@@ -62,48 +57,39 @@ public class CharacterControl : MonoBehaviour
     {
         var contactsCount = _rb.GetContacts(_contactFilter, _points);
         IsGrounded = contactsCount > 0;
-        // var normal = _points.Any(p=> p.normal == Vector2.up) ? Vector2.up : Vector2.zero;
-        var normal = Vector2.zero;
-
-        foreach (var contact in _points)
-        {
-            Debug.DrawRay(contact.point, contact.normal, Color.red);
-        }
+        
+        if(contactsCount == 0)
+            return Vector2.up;
         
         if (contactsCount == 1)
-        {
-            var tempNormal = _points[0].normal;
-            Array.Clear(_points, 0, _points.Length);
-            return tempNormal;
-        }
+            return _points[0].normal;
         
-        if (_rb.linearVelocity.sqrMagnitude > 0.001f)
-        {
-            foreach (var contact in _points)
-            {
-                var dirToPoint = contact.point - _rb.position;
-                var dir = _rb.linearVelocity.normalized;
-                dir.y = 0;
-                if (IsSameDirection(dir, dirToPoint))
-                {
-                    normal = contact.normal;
-                    if(normal == Vector2.zero)
-                        normal = Vector2.up;
-                    Debug.Log($"Same: {normal}");
-                    Debug.DrawRay(_rb.position, contact.normal, Color.blue);
-                    break;
-                }
-            }
-        }
-
-        if(normal == Vector2.zero)
-            normal = _points[0].normal;
-        
-        // Debug.DrawRay(_rb.position, normal.normalized, Color.yellow);
+        var normal = GetNormalFromContacts(_points, contactsCount);
         
         Array.Clear(_points, 0, _points.Length);
         
         return normal.normalized;
+    }
+
+    private Vector2 GetNormalFromContacts(ContactPoint2D[] contacts, int contactCount)
+    {
+        var normal = Vector2.up;
+        
+        if (_rb.linearVelocity.sqrMagnitude > 0.01f || _direction.sqrMagnitude > 0.01f)
+        {
+            for (int i = 0; i < contactCount; i++)
+            {
+                var contact = contacts[i];
+                normal = contact.normal;
+                var dirToPoint = contact.point - _rb.position;
+                var dir = _rb.linearVelocity.GetHorizontal();
+                
+                if (dir.IsSameDirection(dirToPoint))
+                    break;
+            }
+        }
+        
+        return normal;
     }
 
     private float CalculateForce(float accelerationTime, float targetSpeed, float mass, float linearDamping, float currentSpeed = 0f)
@@ -124,7 +110,6 @@ public class CharacterControl : MonoBehaviour
         
         if (enteredSlope || exitSlope)
         {
-            Debug.Log("OnExit");
             return force.normalized * CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearDamping, _rb.linearVelocity.magnitude) + slopeCounterForce;
         }
         
@@ -138,10 +123,5 @@ public class CharacterControl : MonoBehaviour
         var force = tangent * (_rb.mass * gravityAlongSlope);
         
         return force;
-    }
-    
-    private bool IsSameDirection(Vector3 vectorA, Vector3 vectorB)
-    {
-        return Vector3.Angle(vectorA, vectorB) < 90;
     }
 }
