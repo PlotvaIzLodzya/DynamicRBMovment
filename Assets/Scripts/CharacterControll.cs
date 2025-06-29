@@ -1,15 +1,21 @@
 using System;
+using System.Collections;
+using UnityEngine;
+
 using UnityEngine;
 
 public class CharacterControl : MonoBehaviour
 {
     [field: SerializeField] public float MaxSpeed { get; private set; } = 10f;
     [field: SerializeField] public float AccelerationTime { get; private set; } = 0.4f;
+    [field: SerializeField] public float StopTime { get; private set; } = 0.2f;
     
     [SerializeField] private ContactFilter2D _contactFilter;
 
     private bool _isOnSlope;
     private bool _inTest;
+    private float _deccelerationPerFrame;
+    private float _accelerationPerFrame;
     private ContactPoint2D[] _points;
     private Vector2 _direction;
     private Rigidbody2D _rb;
@@ -19,33 +25,49 @@ public class CharacterControl : MonoBehaviour
 
     private void Awake()
     {
+        Application.targetFrameRate = 60;
         _points = new ContactPoint2D[5];
         _rb = GetComponent<Rigidbody2D>();
+        _rb.linearDamping = 0f;
+        _deccelerationPerFrame = (MaxSpeed/StopTime) * Time.fixedDeltaTime;
+        _accelerationPerFrame = (MaxSpeed/AccelerationTime) * Time.fixedDeltaTime;
     }
 
+
+    private float elapsedTime;
     private void Update()
     {
         if (_inTest)
             return;
         
         _direction = Vector2.zero;
+        
         if (Input.GetKey(KeyCode.A))
             _direction += Vector2.left;
+
         if (Input.GetKey(KeyCode.D))
             _direction += Vector2.right;
     }
     
     private void FixedUpdate()
     {
-        var forceMagnitude = CalculateForce(AccelerationTime, MaxSpeed, _rb.mass, _rb.linearDamping);
+        var forceMagnitude = CalculateForce(AccelerationTime, MaxSpeed, _rb.mass);
         var normal = GetNormal();
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
         var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
+
+        if (IsGrounded && _rb.linearVelocity.sqrMagnitude <= _deccelerationPerFrame && _direction.sqrMagnitude <= 0.01f)
+            _rb.linearVelocity = Vector2.zero;
+        
+        if(IsGrounded && _rb.linearVelocity.sqrMagnitude > _deccelerationPerFrame && _direction.sqrMagnitude <= 0.01f)
+            force = _rb.linearVelocity.normalized * CalculateForce(StopTime,0,_rb.mass, MaxSpeed);
         
         _rb.AddForce(force);
-        Speed = _rb.linearVelocity.magnitude;
+        
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
+        Speed = _rb.linearVelocity.magnitude;
+        Debug.Log(Speed);
     }
 
     private Vector2 GetDirectionAlongSurface(Vector2 direction, Vector2 normal)
@@ -92,11 +114,9 @@ public class CharacterControl : MonoBehaviour
         return normal;
     }
 
-    private float CalculateForce(float accelerationTime, float targetSpeed, float mass, float linearDamping, float currentSpeed = 0f)
+    private float CalculateForce(float accelerationTime, float targetSpeed, float mass, float currentSpeed = 0f)
     {
-        var exponent = Mathf.Exp(- linearDamping/mass * accelerationTime);
-        var denominator = 1f - exponent;
-        var forceMagnitude = (targetSpeed - currentSpeed * exponent) * (mass * linearDamping) / denominator;
+        var forceMagnitude = mass * (targetSpeed - currentSpeed) / accelerationTime;
         
         return forceMagnitude;
     }
@@ -110,7 +130,7 @@ public class CharacterControl : MonoBehaviour
         
         if (enteredSlope || exitSlope)
         {
-            return force.normalized * CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearDamping, _rb.linearVelocity.magnitude) + slopeCounterForce;
+            return force.normalized * (CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearVelocity.magnitude) + _accelerationPerFrame * _rb.mass * _rb.gravityScale * Mathf.Abs(Physics2D.gravity.y)) + slopeCounterForce;
         }
         
         return force + slopeCounterForce;
