@@ -32,9 +32,7 @@ public class CharacterControl : MonoBehaviour
         _deccelerationPerFrame = (MaxSpeed/StopTime) * Time.fixedDeltaTime;
         _accelerationPerFrame = (MaxSpeed/AccelerationTime) * Time.fixedDeltaTime;
     }
-
-
-    private float elapsedTime;
+    
     private void Update()
     {
         if (_inTest)
@@ -56,18 +54,12 @@ public class CharacterControl : MonoBehaviour
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
         var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
-
-        if (IsGrounded && _rb.linearVelocity.sqrMagnitude <= _deccelerationPerFrame && _direction.sqrMagnitude <= 0.01f)
-            _rb.linearVelocity = Vector2.zero;
-        
-        if(IsGrounded && _rb.linearVelocity.sqrMagnitude > _deccelerationPerFrame && _direction.sqrMagnitude <= 0.01f)
-            force = _rb.linearVelocity.normalized * CalculateForce(StopTime,0,_rb.mass, MaxSpeed);
+        force = ApplyBreak(force, slopeCounterForce);
         
         _rb.AddForce(force);
         
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
         Speed = _rb.linearVelocity.magnitude;
-        Debug.Log(Speed);
     }
 
     private Vector2 GetDirectionAlongSurface(Vector2 direction, Vector2 normal)
@@ -130,10 +122,30 @@ public class CharacterControl : MonoBehaviour
         
         if (enteredSlope || exitSlope)
         {
-            return force.normalized * (CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearVelocity.magnitude) + _accelerationPerFrame * _rb.mass * _rb.gravityScale * Mathf.Abs(Physics2D.gravity.y)) + slopeCounterForce;
+            var forceMagnitude = CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearVelocity.magnitude);
+            //IDK what this is, but it works
+            var compensationForNextFrame = _accelerationPerFrame * _rb.mass * _rb.gravityScale * Mathf.Abs(Physics2D.gravity.y);
+            
+            var totalForceBoost = forceMagnitude + compensationForNextFrame;
+            
+            return force.normalized * (totalForceBoost) + slopeCounterForce;
         }
         
         return force + slopeCounterForce;
+    }
+
+    private Vector2 ApplyBreak(Vector2 force, Vector2 slopeCounterForce)
+    {
+        if (_direction.sqrMagnitude > 0.01f || IsGrounded == false)
+            return force;
+        
+        if (_rb.linearVelocity.sqrMagnitude <= _deccelerationPerFrame)
+            _rb.linearVelocity = Vector2.zero;
+        
+        if(_rb.linearVelocity.sqrMagnitude > _deccelerationPerFrame)
+            force = _rb.linearVelocity.normalized * CalculateForce(StopTime,0,_rb.mass, MaxSpeed) + slopeCounterForce;
+        
+        return force;
     }
 
     private Vector2 GetSlopeForce(Vector2 normal)

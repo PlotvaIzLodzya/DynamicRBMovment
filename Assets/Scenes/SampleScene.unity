@@ -2275,7 +2275,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 55
+  m_Mass: 5
   m_LinearDamping: 1
   m_AngularDamping: 0.05
   m_GravityScale: 10
@@ -4085,7 +4085,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1949259977
 MonoBehaviour:
   m_ObjectHideFlags: 0
