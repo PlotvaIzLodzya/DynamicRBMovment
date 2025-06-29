@@ -10,6 +10,8 @@ namespace Tests
         SlideDown,
         SlideUp,
         StartAtIntersectionOfSlopeAndGround,
+        EnterCircleSlope,
+        CurveMovement,
     }
     
     public class TestObstacle : MonoBehaviour
