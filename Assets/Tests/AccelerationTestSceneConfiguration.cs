@@ -7,10 +7,11 @@ namespace Tests
     {
         public const float TestTimeScale = 10f;
         
-        [SerializeField] private TestObstacle[] _obstacles;
+        private TestObstacle[] _obstacles;
 
         public void EnableObstacle(AccelerationTestType testType)
         {
+            _obstacles = GetComponentsInChildren<TestObstacle>(true);
             foreach (var obstacle in _obstacles)
             {
                 obstacle.gameObject.SetActive(false);

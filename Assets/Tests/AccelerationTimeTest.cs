@@ -7,8 +7,8 @@ namespace Tests
         protected override void AssertAcceleration(CharacterControl character, float elapsedTime)
         {
             Assert.AreEqual(
-                elapsedTime,
                 character.AccelerationTime,
+                elapsedTime,
                 0.05f);
         }
     }

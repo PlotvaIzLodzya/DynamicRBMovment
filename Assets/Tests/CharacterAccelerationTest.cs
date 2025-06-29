@@ -5,9 +5,8 @@ using UnityEngine.TestTools;
 
 namespace Tests
 {
-    public abstract class CharacterAccelerationTest
+    public abstract class  CharacterAccelerationTest
     {
-
         protected abstract  AccelerationTestType TestType { get; }
         
         [UnityTest]
