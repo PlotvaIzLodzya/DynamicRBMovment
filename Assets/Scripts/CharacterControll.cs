@@ -28,7 +28,7 @@ public class CharacterControl : MonoBehaviour
         Application.targetFrameRate = 60;
         _points = new ContactPoint2D[5];
         _rb = GetComponent<Rigidbody2D>();
-        _rb.linearDamping = 0f;
+        _rb.linearDamping = 1f;
         _deccelerationPerFrame = (MaxSpeed/StopTime) * Time.fixedDeltaTime;
         _accelerationPerFrame = (MaxSpeed/AccelerationTime) * Time.fixedDeltaTime;
     }
@@ -88,18 +88,16 @@ public class CharacterControl : MonoBehaviour
     private Vector2 GetNormalFromContacts(ContactPoint2D[] contacts, int contactCount)
     {
         var normal = Vector2.up;
-        
         if (_rb.linearVelocity.sqrMagnitude > 0.01f || _direction.sqrMagnitude > 0.01f)
         {
             for (int i = 0; i < contactCount; i++)
             {
                 var contact = contacts[i];
-                normal = contact.normal;
                 var dirToPoint = contact.point - _rb.position;
                 var dir = _rb.linearVelocity.GetHorizontal();
                 
                 if (dir.IsSameDirection(dirToPoint))
-                    break;
+                    normal = contact.normal;
             }
         }
         
@@ -108,9 +106,10 @@ public class CharacterControl : MonoBehaviour
 
     private float CalculateForce(float accelerationTime, float targetSpeed, float mass, float currentSpeed = 0f)
     {
-        var forceMagnitude = mass * (targetSpeed - currentSpeed) / accelerationTime;
+        var forceMagnitude = mass * (targetSpeed - currentSpeed) / accelerationTime ;
+        var dampingCompensation = Speed * mass * (1-Time.fixedDeltaTime);
         
-        return forceMagnitude;
+        return forceMagnitude + dampingCompensation;
     }
 
     private Vector2 HandleSlope(Vector2 force, Vector2 slopeCounterForce, Vector2 surfaceNormal)
@@ -122,13 +121,16 @@ public class CharacterControl : MonoBehaviour
         
         if (enteredSlope || exitSlope)
         {
-            var forceMagnitude = CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearVelocity.magnitude);
-            //IDK what this is, but it works
-            var compensationForNextFrame = _accelerationPerFrame * _rb.mass * _rb.gravityScale * Mathf.Abs(Physics2D.gravity.y);
-            
-            var totalForceBoost = forceMagnitude + compensationForNextFrame;
-            
-            return force.normalized * (totalForceBoost) + slopeCounterForce;
+            _rb.linearVelocity = force.normalized * (Speed + _accelerationPerFrame);
+            // var forceMagnitude = CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearVelocity.magnitude);
+            // //IDK what this is, but it works
+            // var compensationForNextFrame = _accelerationPerFrame * _rb.mass * _rb.gravityScale * Mathf.Abs(Physics2D.gravity.y);
+            //
+            // var dir = force.normalized;
+            // var totalForceBoost = dir * (forceMagnitude+ compensationForNextFrame) + slopeCounterForce;
+            //
+            // return totalForceBoost;
+            // return force.normalized*forceMagnitude + slopeCounterForce;
         }
         
         return force + slopeCounterForce;
