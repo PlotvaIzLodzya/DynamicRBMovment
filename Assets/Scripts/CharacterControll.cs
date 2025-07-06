@@ -28,7 +28,7 @@ public class CharacterControl : MonoBehaviour
         Application.targetFrameRate = 60;
         _points = new ContactPoint2D[5];
         _rb = GetComponent<Rigidbody2D>();
-        _rb.linearDamping = 1f;
+        _rb.linearDamping = 0f;
         _deccelerationPerFrame = (MaxSpeed/StopTime) * Time.fixedDeltaTime;
         _accelerationPerFrame = (MaxSpeed/AccelerationTime) * Time.fixedDeltaTime;
     }
@@ -107,9 +107,12 @@ public class CharacterControl : MonoBehaviour
     private float CalculateForce(float accelerationTime, float targetSpeed, float mass, float currentSpeed = 0f)
     {
         var forceMagnitude = mass * (targetSpeed - currentSpeed) / accelerationTime ;
-        var dampingCompensation = Speed * mass * (1-Time.fixedDeltaTime);
         
-        return forceMagnitude + dampingCompensation;
+        // Compensation for damping = 1, i don't if it will be needed
+        // var dampingCompensation = Speed * mass * (1-Time.fixedDeltaTime);
+        // forceMagnitude += dampingCompensation;
+        
+        return forceMagnitude;
     }
 
     private Vector2 HandleSlope(Vector2 force, Vector2 slopeCounterForce, Vector2 surfaceNormal)
@@ -122,15 +125,6 @@ public class CharacterControl : MonoBehaviour
         if (enteredSlope || exitSlope)
         {
             _rb.linearVelocity = force.normalized * (Speed + _accelerationPerFrame);
-            // var forceMagnitude = CalculateForce(Time.fixedDeltaTime, Speed, _rb.mass, _rb.linearVelocity.magnitude);
-            // //IDK what this is, but it works
-            // var compensationForNextFrame = _accelerationPerFrame * _rb.mass * _rb.gravityScale * Mathf.Abs(Physics2D.gravity.y);
-            //
-            // var dir = force.normalized;
-            // var totalForceBoost = dir * (forceMagnitude+ compensationForNextFrame) + slopeCounterForce;
-            //
-            // return totalForceBoost;
-            // return force.normalized*forceMagnitude + slopeCounterForce;
         }
         
         return force + slopeCounterForce;
