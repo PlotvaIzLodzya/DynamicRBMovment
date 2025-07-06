@@ -22,6 +22,7 @@ public class CharacterControl : MonoBehaviour
 
     public float Speed { get; private set; }
     public bool IsGrounded { get; private set; }
+    public bool IsLanded { get; private set; }
 
     private void Awake()
     {
@@ -48,9 +49,11 @@ public class CharacterControl : MonoBehaviour
     }
     
     private void FixedUpdate()
-    {
+    {       
+        
+        var contactsCount = _rb.GetContacts(_contactFilter, _points);
         var forceMagnitude = CalculateForce(AccelerationTime, MaxSpeed, _rb.mass);
-        var normal = GetNormal();
+        var normal = GetNormal(_points, contactsCount);
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
         var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
@@ -60,6 +63,9 @@ public class CharacterControl : MonoBehaviour
         
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
         Speed = _rb.linearVelocity.magnitude;
+        var wasGrounded = IsGrounded;
+        IsGrounded = contactsCount > 0;
+        IsLanded = IsGrounded && wasGrounded == false;
     }
 
     private Vector2 GetDirectionAlongSurface(Vector2 direction, Vector2 normal)
@@ -67,20 +73,17 @@ public class CharacterControl : MonoBehaviour
         return Vector2.Perpendicular(normal) * -direction.x;
     }
 
-    private Vector2 GetNormal()
+    private Vector2 GetNormal(ContactPoint2D[] points, int contactsCount)
     {
-        var contactsCount = _rb.GetContacts(_contactFilter, _points);
-        IsGrounded = contactsCount > 0;
-        
         if(contactsCount == 0)
             return Vector2.up;
         
         if (contactsCount == 1)
-            return _points[0].normal;
+            return points[0].normal;
         
-        var normal = GetNormalFromContacts(_points, contactsCount);
+        var normal = GetNormalFromContacts(points, contactsCount);
         
-        Array.Clear(_points, 0, _points.Length);
+        Array.Clear(points, 0, points.Length);
         
         return normal.normalized;
     }
@@ -108,7 +111,7 @@ public class CharacterControl : MonoBehaviour
     {
         var forceMagnitude = mass * (targetSpeed - currentSpeed) / accelerationTime ;
         
-        // Compensation for damping = 1, i don't if it will be needed
+        // Compensation for damping = 1, i don't know if it will be needed
         // var dampingCompensation = Speed * mass * (1-Time.fixedDeltaTime);
         // forceMagnitude += dampingCompensation;
         
@@ -122,7 +125,7 @@ public class CharacterControl : MonoBehaviour
         var enteredSlope = _isOnSlope && wasOnSlope == false;
         var exitSlope = _isOnSlope == false && wasOnSlope;
         
-        if (enteredSlope || exitSlope)
+        if (IsGrounded && IsLanded == false && (enteredSlope || exitSlope))
         {
             _rb.linearVelocity = force.normalized * (Speed + _accelerationPerFrame);
         }
