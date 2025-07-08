@@ -50,8 +50,9 @@ public class CharacterControl : MonoBehaviour
     
     private void FixedUpdate()
     {       
-        
         var contactsCount = _rb.GetContacts(_contactFilter, _points);
+        var wasGrounded = IsGrounded;
+        IsGrounded = contactsCount > 0;
         var forceMagnitude = CalculateForce(AccelerationTime, MaxSpeed, _rb.mass);
         var normal = GetNormal(_points, contactsCount);
         var direction = GetDirectionAlongSurface(_direction, normal);
@@ -63,8 +64,6 @@ public class CharacterControl : MonoBehaviour
         
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
         Speed = _rb.linearVelocity.magnitude;
-        var wasGrounded = IsGrounded;
-        IsGrounded = contactsCount > 0;
         IsLanded = IsGrounded && wasGrounded == false;
     }
 
@@ -127,7 +126,8 @@ public class CharacterControl : MonoBehaviour
         
         if (IsGrounded && IsLanded == false && (enteredSlope || exitSlope))
         {
-            _rb.linearVelocity = force.normalized * (Speed + _accelerationPerFrame);
+            if(_rb.linearVelocity.IsSameDirection(_direction))
+                _rb.linearVelocity = force.normalized * (Speed + _accelerationPerFrame);
         }
         
         return force + slopeCounterForce;
