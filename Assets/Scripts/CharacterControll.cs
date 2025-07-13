@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 using UnityEngine;
@@ -14,10 +16,14 @@ public class CharacterControl : MonoBehaviour
 
     private bool _isOnSlope;
     private bool _inTest;
+    private float _gravityScale;
+    private float _defaultGravityScale;
+    private float _rbGravityScale;
     private float _deccelerationPerFrame;
     private float _accelerationPerFrame;
     private ContactPoint2D[] _points;
     private Vector2 _direction;
+    private Vector2 _velocity;
     private Rigidbody2D _rb;
 
     public float Speed { get; private set; }
@@ -26,10 +32,14 @@ public class CharacterControl : MonoBehaviour
 
     private void Awake()
     {
-        Application.targetFrameRate = 60;
-        _points = new ContactPoint2D[5];
+        Application.targetFrameRate = 144;
         _rb = GetComponent<Rigidbody2D>();
+        _rbGravityScale = _rb.gravityScale;
+        _defaultGravityScale = 20f;
+        _gravityScale = _defaultGravityScale;
+        _points = new ContactPoint2D[5];
         _rb.linearDamping = 0f;
+        _rb.gravityScale = 0f;
         _deccelerationPerFrame = (MaxSpeed/StopTime) * Time.fixedDeltaTime;
         _accelerationPerFrame = (MaxSpeed/AccelerationTime) * Time.fixedDeltaTime;
     }
@@ -49,21 +59,26 @@ public class CharacterControl : MonoBehaviour
     }
     
     private void FixedUpdate()
-    {       
+    {
         var contactsCount = _rb.GetContacts(_contactFilter, _points);
         var wasGrounded = IsGrounded;
         IsGrounded = contactsCount > 0;
+        
         var forceMagnitude = CalculateForce(AccelerationTime, MaxSpeed, _rb.mass);
         var normal = GetNormal(_points, contactsCount);
         var direction = GetDirectionAlongSurface(_direction, normal);
         var slopeCounterForce = GetSlopeForce(normal);
         var force = HandleSlope(direction * forceMagnitude, slopeCounterForce, normal);
         force = ApplyBreak(force, slopeCounterForce);
+        force += Vector2.down * (Mathf.Abs(Physics2D.gravity.y) * _gravityScale * _rb.mass);
+        var nextStepGrounded = CheckNextStep(force);
+        _gravityScale = nextStepGrounded ? _defaultGravityScale : _rbGravityScale;
         
         _rb.AddForce(force);
         
         _rb.linearVelocityX = Mathf.Clamp(_rb.linearVelocityX, -MaxSpeed, MaxSpeed);
         Speed = _rb.linearVelocity.magnitude;
+        _velocity = _rb.linearVelocity;
         IsLanded = IsGrounded && wasGrounded == false;
     }
 
@@ -117,6 +132,14 @@ public class CharacterControl : MonoBehaviour
         return forceMagnitude;
     }
 
+    private bool CheckNextStep(Vector2 force)
+    {
+        var points = new RaycastHit2D[5];
+        var count = _rb.Cast(force.normalized, _contactFilter, points, distance: 0.01f);
+        
+        return  count > 0;
+    }
+
     private Vector2 HandleSlope(Vector2 force, Vector2 slopeCounterForce, Vector2 surfaceNormal)
     {
         var wasOnSlope = _isOnSlope;
@@ -126,8 +149,13 @@ public class CharacterControl : MonoBehaviour
         
         if (IsGrounded && IsLanded == false && (enteredSlope || exitSlope))
         {
-            if(_rb.linearVelocity.IsSameDirection(_direction))
-                _rb.linearVelocity = force.normalized * (Speed + _accelerationPerFrame);
+            if (_rb.linearVelocity.IsSameDirection(_direction))
+            {
+                var speedDif = _rb.mass * (Speed - _rb.linearVelocity.magnitude) + _accelerationPerFrame;
+                var impulse = force.normalized * speedDif;
+                impulse.y -= Physics2D.gravity.y * _gravityScale * _rb.mass * Time.fixedDeltaTime;
+                _rb.AddForce(impulse, ForceMode2D.Impulse);
+            }
         }
         
         return force + slopeCounterForce;
@@ -150,7 +178,7 @@ public class CharacterControl : MonoBehaviour
     private Vector2 GetSlopeForce(Vector2 normal)
     {
         var tangent = Vector2.Perpendicular(normal); 
-        var gravityAlongSlope = -Physics2D.gravity.y * _rb.gravityScale * normal.x;
+        var gravityAlongSlope = -Physics2D.gravity.y * _gravityScale * normal.x;
         var force = tangent * (_rb.mass * gravityAlongSlope);
         
         return force;
